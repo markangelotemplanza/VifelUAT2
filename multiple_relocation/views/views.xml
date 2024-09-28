@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_form_stock_picking_inherit_return_package" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <!-- Ensure this field is included in the view -->
+                <field name="x_studio_warehouse_sh" invisible =  "1"/>
+                <field name="allowed_value_ids" invisible =  "1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

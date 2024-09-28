@@ -1,0 +1,261 @@
+/* Define custom property animation for the angle */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Keyframes for rotating the gradient */
+@keyframes rotate {
+  0% {
+    --angle: 0deg;
+  }
+  100% {
+    --angle: 360deg;
+  }
+}
+
+/* Keyframes for pulsing shadow effect */
+@keyframes pulseShadow {
+  0%, 100% {
+    box-shadow: 0px 0px 30px 20px rgba(255, 105, 180, 0.7), 0 0 25px 15px rgba(30, 144, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0px 0px 60px 30px rgba(255, 69, 0, 0.9), 0 0 50px 25px rgba(124, 252, 0, 0.9);
+  }
+}
+
+/* Keyframes for dust particle effect */
+@keyframes dustParticles {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-10px) translateX(10px);
+    opacity: 0.5;
+  }
+}
+
+/* Keyframes for fire effect */
+@keyframes fireEffect {
+  0% {
+    box-shadow: 0 0 15px 10px rgba(255, 69, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 30px 20px rgba(255, 140, 0, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 15px 10px rgba(255, 69, 0, 0.7);
+  }
+}
+
+/* Keyframes for fireworks effect */
+@keyframes fireworks {
+  0% {
+    opacity: 1;
+    transform: scale(0) translate(0, 0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2) translate(-10px, -10px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5) translate(10px, 10px);
+  }
+}
+
+/* Keyframes for button pulse effect */
+@keyframes buttonPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.7);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 1);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.7);
+  }
+}
+
+/* Keyframes for button glowing effect */
+@keyframes buttonGlow {
+  0% {
+    background-color: #ffffff;
+    box-shadow: 0 0 5px rgba(255, 105, 180, 0.5);
+  }
+  50% {
+    background-color: #e0e0e0;
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.8);
+  }
+  100% {
+    background-color: #ffffff;
+    box-shadow: 0 0 5px rgba(255, 105, 180, 0.5);
+  }
+}
+
+.calculator-app {
+  --angle: 0deg; /* Initialize the angle property */
+  width: 320px;
+  margin: auto;
+  background-color: #f0f0f7;
+  padding: 15px;
+  border-radius: 10px;
+  border: 5px solid; /* Sets the border width */
+  border-image: conic-gradient(from var(--angle), red, yellow, lime, aqua, blue, magenta, red) 1; /* Apply the conic-gradient */
+  animation: 2s rotate linear infinite, 4s pulseShadow ease-in-out infinite, 5s fireEffect infinite alternate; /* Apply rotation, pulse, fire, and ice animations */
+  position: relative; /* Relative positioning for pseudo-elements */
+  overflow: hidden; /* Hide overflow for pseudo-element effects */
+  z-index: 1; /* Ensure it stays on top */
+  filter: drop-shadow(0 0 15px #ff00ff) drop-shadow(0 0 30px #00f); /* Dynamic shadow filter for more glow */
+}
+
+/* Pseudo-elements for additional visual effects */
+
+/* Dust particles */
+.calculator-app::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0));
+  border-radius: 50%;
+  animation: dustParticles 6s linear infinite alternate; /* Creates floating dust particles effect */
+  z-index: -1;
+}
+
+/* Fireworks effect */
+.calculator-app::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 70%);
+  animation: fireworks 2s ease-out infinite alternate; /* Creates a fireworks effect */
+  z-index: -2; /* Places behind the main content */
+  pointer-events: none;
+}
+
+/* Hover effect to make it interactive */
+.calculator-app:hover {
+  /* transform: scale(1.1); /* Enhance scaling and rotation for hover */ 
+  filter: drop-shadow(0 0 25px #ff4500) drop-shadow(0 0 35px #1e90ff); /* Intensify the glow on hover */
+}
+
+/* Style for calculator display */
+.calculator-app #display {
+  width: 100%;
+  height: 60px;
+  margin-bottom: 10px;
+  font-size: 32px;
+  text-align: right;
+  padding: 10px;
+  border: none;
+  background-color: #ececec;
+  border-radius: 5px;
+  box-shadow: inset 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for buttons container */
+.calculator-app .buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+/* Enhanced button styles */
+.calculator-app button {
+  width: 100%;
+  height: 60px;
+  font-size: 28px;
+  border: none;
+  border-radius: 10px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  animation: buttonGlow 2s ease-in-out infinite, buttonPulse 1s ease-in-out infinite; /* Add glow and pulse animation */
+}
+
+.calculator-app .number {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.calculator-app .number:hover {
+  background-color: #d0d0d0;
+  animation: buttonGlow 1s ease-in-out; /* Intensify the glow effect on hover */
+}
+
+.calculator-app .operator {
+  background-color: #f0f0f0;
+  color: #ff9500;
+}
+
+.calculator-app .operator:hover {
+  background-color: #e0e0e0;
+  animation: buttonGlow 1s ease-in-out; /* Intensify the glow effect on hover */
+}
+
+.calculator-app .equals {
+  background-color: #ff9500;
+  grid-column: span 2;
+  color: #000000;
+}
+
+.calculator-app .equals:hover {
+  background-color: #ff7400;
+  animation: buttonGlow 1s ease-in-out; /* Intensify the glow effect on hover */
+}
+
+.calculator-app .clear {
+  background-color: #acacac;
+  color: red;
+}
+
+.calculator-app .clear:hover {
+  background-color: #9a9a9a;
+  animation: buttonGlow 1s ease-in-out; /* Intensify the glow effect on hover */
+}
+
+.calculator-app .decimal {
+  background-color: #f0f0f0;
+  color: black;
+}
+
+.calculator-app .decimal:hover {
+  background-color: #e0e0e0;
+  animation: buttonGlow 1s ease-in-out; /* Intensify the glow effect on hover */
+}
+
+/* Dropdown menu styles */
+.calc_dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  z-index: 9999999;
+}
+
+.calc_dropdown-menu.show {
+  display: block;
+
+}
+
+.calc_dropdown-menu li{
+    list-style-type: none;
+}
+
+/* Calculator icon styles */
+.o_calculator_icon {
+  margin-top: 3px;
+  color: #ff8800;
+}

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="CalculatorTool" owl="1">
+        <div class="calc_dropdown">
+            <button class="calc_dropdown-toggle o_calculator_icon" type="button" t-on-click="onDropdownToggleClick">
+                <i class="fa fa-calculator"/>
+            </button>
+            <ul t-attf-class="calc_dropdown-menu {{ state.dropdownVisible ? 'show' : '' }}">
+                <li>
+                    <div class="calc-pad-tool draggable-tool" t-ref="draggable" t-att-style="'transform: translate(' + state.position.x + 'px, ' + state.position.y + 'px);'">
+                        <div class="calculator-app">
+                            <input type="text" class="display" id="display" readonly="readonly" t-att-value="state.displayValue"/>
+                            <div class="buttons">
+                                <button class="number" t-on-click="() => this.onNumberClick('7')">7</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('8')">8</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('9')">9</button>
+                                <button class="operator" t-on-click="() => this.onOperatorClick('+')">+</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('4')">4</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('5')">5</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('6')">6</button>
+                                <button class="operator" t-on-click="() => this.onOperatorClick('-')">-</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('1')">1</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('2')">2</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('3')">3</button>
+                                <button class="operator" t-on-click="() => this.onOperatorClick('*')">*</button>
+                                <button class="number" t-on-click="() => this.onNumberClick('0')">0</button>
+                                <button class="decimal" t-on-click="onDecimalClick">.</button>
+                                <button class="operator" t-on-click="() => this.onOperatorClick('%')">%</button>
+                                <button class="operator" t-on-click="() => this.onOperatorClick('/')">/</button>
+                                <button class="clear" t-on-click="onClearClick">C</button>
+                                <button class="toggle-sign" t-on-click="onToggleSignClick">±</button>
+                                <button class="equals" t-on-click="onEqualsClick">=</button>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </t>
+</templates>

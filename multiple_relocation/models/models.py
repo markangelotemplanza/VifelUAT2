@@ -373,6 +373,7 @@ class transfer_locations(models.Model):
 
 
     
+    
     allowed_value_ids = fields.Many2many(
         'stock.location', compute="_compute_allowed_value_ids", string="Allowed Locations", store=True
     )

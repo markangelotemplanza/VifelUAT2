@@ -11,6 +11,7 @@ class ReturnPackageWizardLine(models.TransientModel):
     wizard_id = fields.Many2one('return.package.wizard', string="Wizard")
     select_package = fields.Boolean(string="Select")
     result_package_id = fields.Many2one('stock.quant.package', string="Package")
+    pallet_series_id = fields.Char(string='Pallet Series ID')
     product_id = fields.Many2one('product.product', string="Products")
     quantity = fields.Float(string="Quantity")
     production_date=fields.Date(string="Production Date")
@@ -49,6 +50,7 @@ class ReturnPackageWizard(models.TransientModel):
                         'select_package': False,
                         'result_package_id': move_line.package_id.id,
                         'location_dest_id': move_line.location_id.id,
+                        'pallet_series_id': move_line.x_studio_pallet_series_id,
                         'product_id': move_line.product_id.id,
                         'quantity': move_line.quantity,
                         'expiration_date': move_line.x_studio_expiration_date,
@@ -159,6 +161,7 @@ class ReturnPackageWizard(models.TransientModel):
                     'x_studio_expiration_date': package.expiration_date,
                     'x_studio_production_date': package.production_date,
                     'x_studio_return_count': package.return_counter+1,
+                    'x_studio_pallet_series_id': package.pallet_series_id,
                     'x_studio_container_number': package.container_number,
                     'x_studio_2nd_uom': package.pack_uom_unit,
                     'x_studio_total_units': package.min_uom_unit,

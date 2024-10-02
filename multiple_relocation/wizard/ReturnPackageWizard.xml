@@ -39,6 +39,7 @@
                                  <field name="product_id"/>
                                 <!-- <field name="stock_move_line" /> -->
                                 <field name="return_counter"/>
+                                <field name="pallet_series_id" />
                                 <field name="result_package_id" />
                                 <field name="location_dest_id" />
                                 <field name="container_number" />

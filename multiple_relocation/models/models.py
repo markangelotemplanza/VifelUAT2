@@ -73,12 +73,16 @@ class stock_move_line_Override(models.Model):
     @api.onchange('x_studio_expiration_date')
     def _onchange_expiry_date(self):
         expiry_date_range = self.env['product.product'].search([('id', '=', self.product_id.id)])
+        product_brand_expiry = expiry_date_range.x_studio_client_expiry_range.mapped('x_studio_brand_name.name')
+
         warning = None
+
         for line in expiry_date_range.x_studio_client_expiry_range:
             if line.x_studio_client_1 == self.owner_id:
                 today = fields.Date.today()
                 not_acceptable = today + timedelta(days=line.x_studio_expiry_date_range.x_studio_float_value)
-                if (self.x_studio_expiration_date < not_acceptable):
+                
+                if (self.x_studio_expiration_date < not_acceptable and self.product_id.product_template_variant_value_ids.name in product_brand_expiry):
                     self.x_studio_exp_warned = True
                     warning = {
                         'title': "Expiration Threshold Warning!",
@@ -372,7 +376,6 @@ class transfer_locations(models.Model):
         check_company=True, required=True, domain="[('id', 'in', allowed_value_ids)]")
 
 
-    
     
     allowed_value_ids = fields.Many2many(
         'stock.location', compute="_compute_allowed_value_ids", string="Allowed Locations", store=True

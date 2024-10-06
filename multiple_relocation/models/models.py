@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError, UserError
 import logging
 from datetime import datetime, timedelta
 import re
+from odoo import _, api, fields, models, SUPERUSER_ID
 _logger = logging.getLogger(__name__)
 
 class multiple_relocation(models.TransientModel):

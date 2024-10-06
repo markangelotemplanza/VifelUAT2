@@ -381,7 +381,8 @@ class transfer_locations(models.Model):
         'stock.location', compute="_compute_allowed_value_ids", string="Allowed Locations", store=True
     )
 
-
+    gentle_reminder = fields.Char(string="Reminder")
+        
     def action_return_packages(self):
         return {
             'type': 'ir.actions.act_window',
@@ -395,7 +396,53 @@ class transfer_locations(models.Model):
             },
         }
 
+    def multiple_products_in_one_pallet(self):    
+        locs_and_pallets_expiration = []
+        move_lines = self.move_line_ids
+        conflicting_pallets = {}  # To store conflicting products for each pallet
+    
+        for line in move_lines:
+            location, package = line.location_dest_id, line.result_package_id
+    
+            # Check if the package (pallet) is already in our tracker
+            for data in locs_and_pallets_expiration:
+                if data['package_id'] == line.result_package_id.id and data['product_id'] != line.product_id.id:
+                    # Store the conflicting products in a dictionary with pallet id as key
+                    if line.result_package_id.name not in conflicting_pallets:
+                        conflicting_pallets[line.result_package_id.name] = [data['display_name']]
+                    
+                    # Add the current product to the conflict list if it's not already added
+                    if line.product_id.display_name not in conflicting_pallets[line.result_package_id.name]:
+                        conflicting_pallets[line.result_package_id.name].append(line.product_id.display_name)
+            
+            # Track the current line's package and product details
+            locs_and_pallets_expiration.append({
+                'location_id': location.id,
+                'package_id': package.id,
+                'product_id': line.product_id.id,
+                'display_name': line.product_id.display_name,
+                'x_studio_production_date': line.x_studio_production_date,
+                'x_studio_expiration_date': line.x_studio_expiration_date,
+                'x_studio_container_number': line.x_studio_container_number,
+            })
+    
+        # If any conflicting pallets are found, raise an error
+        if conflicting_pallets:
+            conflict_messages = []
+            for pallet, products in conflicting_pallets.items():
+                product_list = ", ".join(products)
+                conflict_messages.append(f"• '{pallet}' contains multiple products: {product_list}")
+            
+            # Use \n to create line breaks
+            self.gentle_reminder = "Reminder:\n" + "\n".join(conflict_messages) + "\n\nAre you sure you want to insert each line of multiple products into a single pallet?"
 
+
+  
+
+
+
+            
+         
     
     @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh')
     def _compute_allowed_value_ids(self):

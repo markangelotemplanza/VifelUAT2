@@ -366,13 +366,13 @@ class transfer_locations(models.Model):
 
     location_id = fields.Many2one(
         'stock.location', "Source Location",
-        compute="_compute_location_id", store=True, precompute=True, readonly=False,
+         store=True,  readonly=False,
         check_company=True, required=True, domain="[('id', 'in', allowed_value_ids)]")
 
 
     location_dest_id = fields.Many2one(
         'stock.location', "Destination Location",
-        compute="_compute_location_id", store=True, precompute=True, readonly=False,
+       store=True,  readonly=False,
         check_company=True, required=True, domain="[('id', 'in', allowed_value_ids)]")
 
 
@@ -444,7 +444,7 @@ class transfer_locations(models.Model):
             
          
     
-    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh')
+    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh', 'x_studio_preferred_locations')
     def _compute_allowed_value_ids(self):
         for record in self:
             if record.state == 'done' or not record.partner_id:
@@ -472,14 +472,29 @@ class transfer_locations(models.Model):
                 if record.x_studio_is_a_blast_freezer:
                     record.allowed_value_ids = self.env['stock.location'].search([('x_studio_is_a_blast_freezer', '=', True)])
                 else:
-                    record.allowed_value_ids = self.env['stock.location'].search([
-                        '&',
-                        ('child_ids.child_ids', '!=', False),
-                        ('name', '!=', 'Stock'),
-                        ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                        ('location_id', '!=', False),
-                        ('name', 'not ilike', "BF")
-                    ])
+                    if not record.x_studio_preferred_locations:
+                        record.allowed_value_ids = self.env['stock.location'].search([
+                            '&',
+                            ('child_ids', '!=', False),
+                            ('name', '!=', 'Stock'),
+                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
+                            ('location_id', '!=', False),
+                            ('complete_name', 'not ilike', "BF")
+                        ])
+                    else:
+                        record.allowed_value_ids = self.env['stock.location'].search([
+                            ('child_ids', '!=', False),
+                            ('name', '!=', 'Stock'),
+                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
+                            ('location_id', '!=', False),
+                            ('complete_name', 'not ilike', "BF"),
+                            '|',
+                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
+                             '|',
+                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                        ])
+
             else:
                 record.allowed_value_ids = []
 

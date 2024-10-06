@@ -60,8 +60,8 @@ class ReturnPackageWizard(models.TransientModel):
                         'container_number': move_line.x_studio_container_number,
                         'pack_uom_unit': move_line.x_studio_affected_2nd_uom,
                         'min_uom_unit': move_line.x_studio_withdraw_units,
-                        'min_uom': move_line.x_studio_quantity_uom,
-                        'pack_uom': move_line.x_studio_min_quantity_uom,
+                        'min_uom': move_line.x_studio_min_quantity_uom,
+                        'pack_uom': move_line.x_studio_quantity_uom_delivery,
                         
                     }))
                 self.package_line_ids = lines

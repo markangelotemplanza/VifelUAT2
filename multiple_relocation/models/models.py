@@ -19,6 +19,8 @@ class multiple_relocation(models.TransientModel):
         for quant in self.quant_ids:
             if quant.x_studio_special_holding:
                 raise UserError('\nYou cannot relocate pallets that are on Special Holding State')
+            if quant.available_quantity != quant.quantity:
+                raise UserError(f"\nRecord with a Product of {quant.product_id.display_name} and a Pallet of {quant.package_id.name} seems to have quantites reserved on a picking record. Please release them before relocating the stock record.")
         # Group quants by package_id and location_id
         grouped_quants = {}
         for quant in self.quant_ids:

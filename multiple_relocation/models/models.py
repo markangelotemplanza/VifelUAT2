@@ -450,67 +450,44 @@ class transfer_locations(models.Model):
             
          
     
-    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh', 'x_studio_preferred_locations')
+    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh')
     def _compute_allowed_value_ids(self):
         for record in self:
-            # Skip computation if it's done or there's no partner
             if record.state == 'done' or not record.partner_id:
                 record.allowed_value_ids = []
                 continue
-            
-            allowed_locations = self.env['stock.location']
-            domain = []
-            
             if record.picking_type_code == 'outgoing':
                 if record.x_studio_is_a_blast_freezer:
-                    # Fetch partner quant locations related to blast freezer
-                    quant_domain = [
+                    locations_with_partner_quants = self.env['stock.quant'].search([
                         ('owner_id', '=', record.partner_id.id),
                         ('location_id.x_studio_is_a_blast_freezer', '=', True)
-                    ]
-                    partner_quants = self.env['stock.quant'].search(quant_domain).mapped('location_id.id')
-                    allowed_locations = self.env['stock.location'].browse(partner_quants)
+                    ]).mapped('location_id.id')
+                    
+                    record.allowed_value_ids = self.env['stock.location'].browse(locations_with_partner_quants)
                 else:
-                    # Define domain for non-blast-freezer outgoing operations
-                    domain = AND([
-                        ["&", 
-                        ("warehouse_id.code", "=", record.x_studio_warehouse_sh)],
-                        OR([
-                            ("child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
-                            ("child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id)
-                        ])
+                    allowed_locations = self.env["stock.location"].search([
+                        "&", 
+                        "|", 
+                        ("child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
+                        ("child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
+                        ("warehouse_id.code", "=", record.x_studio_warehouse_sh)
                     ])
-            
+                    record.allowed_value_ids = allowed_locations
+
             elif record.picking_type_code == 'incoming':
                 if record.x_studio_is_a_blast_freezer:
-                    domain = [('x_studio_is_a_blast_freezer', '=', True)]
+                    record.allowed_value_ids = self.env['stock.location'].search([('x_studio_is_a_blast_freezer', '=', True)])
                 else:
-                    # Preferred locations handling
-                    location_ids = record.x_studio_preferred_locations.ids or []
-                    base_domain = [
-                        ('child_ids', '!=', False),
+                    record.allowed_value_ids = self.env['stock.location'].search([
+                        '&',
+                        ('child_ids.child_ids', '!=', False),
                         ('name', '!=', 'Stock'),
                         ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
                         ('location_id', '!=', False),
-                        ('complete_name', 'not ilike', "BF")
-                    ]
-                    
-                    if location_ids:
-                        # Add preferred location domain
-                        location_domain = OR([
-                            ('id', 'in', location_ids),
-                            ('location_id', 'in', location_ids),
-                            ('location_id.location_id', 'in', location_ids)
-                        ])
-                        domain = AND([base_domain, location_domain])
-                    else:
-                        domain = base_domain
-            
-            # Apply the domain and limit results if needed to reduce load
-            if domain:
-                allowed_locations = self.env['stock.location'].search(domain, limit=500)  # limit for performance
-            
-            record.allowed_value_ids = allowed_locations
+                        ('name', 'not ilike', "BF")
+                    ])
+            else:
+                record.allowed_value_ids = []
 
     def has_generated_an_ncr(self):
         self.x_studio_has_generated_an_ncr = True

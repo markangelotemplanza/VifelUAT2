@@ -5,6 +5,9 @@ from odoo.exceptions import ValidationError, UserError
 import logging
 from datetime import datetime, timedelta
 import re
+from odoo import _, api, fields, models, SUPERUSER_ID
+from odoo.osv.expression import AND, OR
+
 _logger = logging.getLogger(__name__)
 
 class multiple_relocation(models.TransientModel):
@@ -433,11 +436,12 @@ class transfer_locations(models.Model):
             conflict_messages = []
             for pallet, products in conflicting_pallets.items():
                 product_list = ", ".join(products)
-                conflict_messages.append(f"• '{pallet}' contains multiple products: {product_list}")
+                conflict_messages.append(f"• Pallet: '{pallet}' contains multiple products: {product_list}")
             
             # Use \n to create line breaks
             self.gentle_reminder = "Reminder:\n" + "\n".join(conflict_messages) + "\n\nAre you sure you want to insert each line of multiple products into a single pallet?"
-
+        else:
+            self.gentle_reminder = ""
 
   
 
@@ -446,7 +450,7 @@ class transfer_locations(models.Model):
             
          
     
-    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh', 'x_studio_preferred_locations')
+    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh')
     def _compute_allowed_value_ids(self):
         for record in self:
             if record.state == 'done' or not record.partner_id:
@@ -474,29 +478,14 @@ class transfer_locations(models.Model):
                 if record.x_studio_is_a_blast_freezer:
                     record.allowed_value_ids = self.env['stock.location'].search([('x_studio_is_a_blast_freezer', '=', True)])
                 else:
-                    if not record.x_studio_preferred_locations:
-                        record.allowed_value_ids = self.env['stock.location'].search([
-                            '&',
-                            ('child_ids', '!=', False),
-                            ('name', '!=', 'Stock'),
-                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                            ('location_id', '!=', False),
-                            ('complete_name', 'not ilike', "BF")
-                        ])
-                    else:
-                        record.allowed_value_ids = self.env['stock.location'].search([
-                            ('child_ids', '!=', False),
-                            ('name', '!=', 'Stock'),
-                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                            ('location_id', '!=', False),
-                            ('complete_name', 'not ilike', "BF"),
-                            '|',
-                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
-                             '|',
-                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
-                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
-                        ])
-
+                    record.allowed_value_ids = self.env['stock.location'].search([
+                        '&',
+                        ('child_ids.child_ids', '!=', False),
+                        ('name', '!=', 'Stock'),
+                        ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
+                        ('location_id', '!=', False),
+                        ('name', 'not ilike', "BF")
+                    ])
             else:
                 record.allowed_value_ids = []
 

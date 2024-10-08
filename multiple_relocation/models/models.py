@@ -6,6 +6,8 @@ import logging
 from datetime import datetime, timedelta
 import re
 from odoo import _, api, fields, models, SUPERUSER_ID
+from odoo.osv.expression import AND, OR
+
 _logger = logging.getLogger(__name__)
 
 class multiple_relocation(models.TransientModel):
@@ -438,7 +440,8 @@ class transfer_locations(models.Model):
             
             # Use \n to create line breaks
             self.gentle_reminder = "Reminder:\n" + "\n".join(conflict_messages) + "\n\nAre you sure you want to insert each line of multiple products into a single pallet?"
-
+        else:
+            self.gentle_reminder = ""
 
   
 
@@ -450,56 +453,64 @@ class transfer_locations(models.Model):
     @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh', 'x_studio_preferred_locations')
     def _compute_allowed_value_ids(self):
         for record in self:
+            # Skip computation if it's done or there's no partner
             if record.state == 'done' or not record.partner_id:
                 record.allowed_value_ids = []
                 continue
+            
+            allowed_locations = self.env['stock.location']
+            domain = []
+            
             if record.picking_type_code == 'outgoing':
                 if record.x_studio_is_a_blast_freezer:
-                    locations_with_partner_quants = self.env['stock.quant'].search([
+                    # Fetch partner quant locations related to blast freezer
+                    quant_domain = [
                         ('owner_id', '=', record.partner_id.id),
                         ('location_id.x_studio_is_a_blast_freezer', '=', True)
-                    ]).mapped('location_id.id')
-                    
-                    record.allowed_value_ids = self.env['stock.location'].browse(locations_with_partner_quants)
+                    ]
+                    partner_quants = self.env['stock.quant'].search(quant_domain).mapped('location_id.id')
+                    allowed_locations = self.env['stock.location'].browse(partner_quants)
                 else:
-                    allowed_locations = self.env["stock.location"].search([
-                        "&", 
-                        "|", 
-                        ("child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
-                        ("child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
-                        ("warehouse_id.code", "=", record.x_studio_warehouse_sh)
+                    # Define domain for non-blast-freezer outgoing operations
+                    domain = AND([
+                        ["&", 
+                        ("warehouse_id.code", "=", record.x_studio_warehouse_sh)],
+                        OR([
+                            ("child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
+                            ("child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id)
+                        ])
                     ])
-                    record.allowed_value_ids = allowed_locations
-
+            
             elif record.picking_type_code == 'incoming':
                 if record.x_studio_is_a_blast_freezer:
-                    record.allowed_value_ids = self.env['stock.location'].search([('x_studio_is_a_blast_freezer', '=', True)])
+                    domain = [('x_studio_is_a_blast_freezer', '=', True)]
                 else:
-                    if not record.x_studio_preferred_locations:
-                        record.allowed_value_ids = self.env['stock.location'].search([
-                            '&',
-                            ('child_ids', '!=', False),
-                            ('name', '!=', 'Stock'),
-                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                            ('location_id', '!=', False),
-                            ('complete_name', 'not ilike', "BF")
+                    # Preferred locations handling
+                    location_ids = record.x_studio_preferred_locations.ids or []
+                    base_domain = [
+                        ('child_ids', '!=', False),
+                        ('name', '!=', 'Stock'),
+                        ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
+                        ('location_id', '!=', False),
+                        ('complete_name', 'not ilike', "BF")
+                    ]
+                    
+                    if location_ids:
+                        # Add preferred location domain
+                        location_domain = OR([
+                            ('id', 'in', location_ids),
+                            ('location_id', 'in', location_ids),
+                            ('location_id.location_id', 'in', location_ids)
                         ])
+                        domain = AND([base_domain, location_domain])
                     else:
-                        record.allowed_value_ids = self.env['stock.location'].search([
-                            ('child_ids', '!=', False),
-                            ('name', '!=', 'Stock'),
-                            ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                            ('location_id', '!=', False),
-                            ('complete_name', 'not ilike', "BF"),
-                            '|',
-                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
-                             '|',
-                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
-                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
-                        ])
-
-            else:
-                record.allowed_value_ids = []
+                        domain = base_domain
+            
+            # Apply the domain and limit results if needed to reduce load
+            if domain:
+                allowed_locations = self.env['stock.location'].search(domain, limit=500)  # limit for performance
+            
+            record.allowed_value_ids = allowed_locations
 
     def has_generated_an_ncr(self):
         self.x_studio_has_generated_an_ncr = True

@@ -436,7 +436,7 @@ class transfer_locations(models.Model):
             conflict_messages = []
             for pallet, products in conflicting_pallets.items():
                 product_list = ", ".join(products)
-                conflict_messages.append(f"• '{pallet}' contains multiple products: {product_list}")
+                conflict_messages.append(f"• 'Pallet: {pallet}' contains multiple products: {product_list}")
             
             # Use \n to create line breaks
             self.gentle_reminder = "Reminder:\n" + "\n".join(conflict_messages) + "\n\nAre you sure you want to insert each line of multiple products into a single pallet?"

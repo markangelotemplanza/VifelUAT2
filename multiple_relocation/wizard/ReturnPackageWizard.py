@@ -69,7 +69,9 @@ class ReturnPackageWizard(models.TransientModel):
 
     def action_process_return(self):
         selected_packages = self.package_line_ids.filtered(lambda line: line.select_package)
-        
+        if not self.package_line_ids:
+            raise UserError("Please select at least 1 Move Line.")
+            
         if not self.picking_type_id:
             # Default to the picking type for Receipts if not specified
             warehouse_id = self.picking_id.picking_type_id.warehouse_id.id

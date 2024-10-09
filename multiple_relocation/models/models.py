@@ -484,7 +484,12 @@ class transfer_locations(models.Model):
                         ('name', '!=', 'Stock'),
                         ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
                         ('location_id', '!=', False),
-                        ('name', 'not ilike', "BF")
+                        ('name', 'not ilike', "BF"),
+                            '|',
+                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
+                             '|',
+                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
                     ])
             else:
                 record.allowed_value_ids = []

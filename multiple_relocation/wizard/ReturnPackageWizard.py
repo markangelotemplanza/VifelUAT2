@@ -24,6 +24,9 @@ class ReturnPackageWizardLine(models.TransientModel):
     location_dest_id = fields.Many2one('stock.location', string="Destination Location")
     pack_uom = fields.Many2one('uom.uom', string='Unit of Measure')
     min_uom = fields.Many2one('uom.uom', string='Unit of Measure')
+    actual_quantity = fields.Float(string="Actual Quantity", readonly=True)
+    actual_pack_uom_unit = fields.Float(string="Packaging Unit", readonly=True)
+    actual_min_uom_unit = fields.Float(string="Min Unit", readonly=True)
     
 class ReturnPackageWizard(models.TransientModel):
     _name = 'return.package.wizard'
@@ -62,6 +65,9 @@ class ReturnPackageWizard(models.TransientModel):
                         'min_uom_unit': move_line.x_studio_withdraw_units,
                         'min_uom': move_line.x_studio_min_quantity_uom,
                         'pack_uom': move_line.x_studio_quantity_uom_delivery,
+                        'actual_pack_uom_unit': move_line.x_studio_affected_2nd_uom,
+                        'actual_min_uom_unit': move_line.x_studio_withdraw_units,
+                        'actual_quantity': move_line.quantity,
                         
                     }))
                 self.package_line_ids = lines

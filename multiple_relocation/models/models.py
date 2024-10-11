@@ -114,7 +114,46 @@ class stock_move_line_Override(models.Model):
             if line.result_package_id.location_id:
                 line.location_dest_id = line.result_package_id.location_id
 
-    
+    def call_server_action_auto_fill_pd_ed(self):
+        picking_id = self.env.context.get('default_picking_id')
+        if picking_id:
+            # Search for the stock.picking record using the provided picking_id
+            picking = self.env['stock.picking'].search([('id', '=', picking_id)], limit=1)
+            if picking:
+                # Find the server action with the specified ID (341 in this case)
+                action = self.env['ir.actions.server'].browse(341)
+                if action:
+                    # Execute the action for the stock.picking record
+                    context = {'active_model': 'stock.picking', 'active_ids': [picking.id], 'active_id': picking.id}
+
+                    return action.with_context(context).run()
+                else:
+                    raise UserError("Server action with ID 341 not found.")
+            else:
+                raise UserError("No stock.picking record found with ID %s." % picking_id)
+        else:
+            raise UserError("No picking ID found in context.")
+            
+    def call_server_action_auto_fill_locations(self):
+        picking_id = self.env.context.get('default_picking_id')
+        if picking_id:
+            # Search for the stock.picking record using the provided picking_id
+            picking = self.env['stock.picking'].search([('id', '=', picking_id)], limit=1)
+            if picking:
+                # Find the server action with the specified ID (341 in this case)
+                action = self.env['ir.actions.server'].browse(300)
+                if action:
+                    # Execute the action for the stock.picking record
+                    context = {'active_model': 'stock.picking', 'active_ids': [picking.id], 'active_id': picking.id}
+
+                    return action.with_context(context).run()
+                else:
+                    raise UserError("Server action with ID 341 not found.")
+            else:
+                raise UserError("No stock.picking record found with ID %s." % picking_id)
+        else:
+            raise UserError("No picking ID found in context.")
+
 
 
 class ensure_ownership(models.Model):
@@ -400,7 +439,44 @@ class transfer_locations(models.Model):
                 'default_picking_id': self.id,  # Pass the current picking_id to the wizard
             },
         }
+        
+    @api.onchange('location_id', 'location_dest_id')
+    def _onchange_locations(self):
+        (self.move_ids | self.move_ids_without_package).update({
+            "location_id": self.location_id,
+            "location_dest_id": self.location_dest_id
+        })
+        if self._origin.location_id != self.location_id and any(line.quantity for line in self.move_ids.move_line_ids):
+            self.move_ids.move_line_ids = [(5, 0, 0)]
+            return {'warning': {
+                    'title': _("Locations to update"),
+                    'message': _("You might want to update the locations of this transfer's operations")
+                    }
+            }
 
+    def action_detailed_operations(self):
+        view_id = self.env.ref('stock.view_stock_move_line_detailed_operation_tree').id
+        return {
+            'name': _('Detailed Operations'),
+            'view_mode': 'tree',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.move.line',
+            'views': [(view_id, 'tree')],
+            'domain': [('id', 'in', self.move_line_ids.ids)],
+            'context': {
+                'create': self.state != 'done' or not self.is_locked,
+                'default_picking_id': self.id,
+                'default_location_id': self.location_id.id,
+                'default_location_dest_id': self.location_dest_id.id,
+                'default_company_id': self.company_id.id,
+                'show_lots_text': self.show_lots_text,
+                'picking_code': self.picking_type_code,
+                'picking_type_id': self.picking_type_id.id,
+            }
+        }
+        
+
+        
     def multiple_products_in_one_pallet(self):    
         locs_and_pallets_expiration = []
         move_lines = self.move_line_ids
@@ -484,12 +560,7 @@ class transfer_locations(models.Model):
                         ('name', '!=', 'Stock'),
                         ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
                         ('location_id', '!=', False),
-                        ('name', 'not ilike', "BF"),
-                            '|',
-                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
-                             '|',
-                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
-                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                        ('name', 'not ilike', "BF")
                     ])
             else:
                 record.allowed_value_ids = []

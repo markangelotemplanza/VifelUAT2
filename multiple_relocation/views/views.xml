@@ -11,4 +11,99 @@
             </xpath>
         </field>
     </record>
+
+
+    <record id="view_stock_move_line_detailed_operation_tree_inherit" model="ir.ui.view">
+        <field name="name">stock.move.line.operations.tree.inherit</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_stock_move_line_detailed_operation_tree"/>
+        <field name="arch" type="xml">
+            <!-- Target the header inside the tree view -->
+            <xpath expr="//tree/header" position="inside">
+                <!-- Add your new button here -->
+                <button class="btn-secondary" name="call_server_action_auto_fill_locations" type="object" 
+                        string="Auto-Fill Locations" />
+                <button class="btn-secondary" name="call_server_action_auto_fill_pd_ed" type="object" 
+                        string="Auto-Fill PD &amp; ED" />
+            </xpath>
+    
+            <!-- Declare the missing fields as invisible -->
+            <xpath expr="//tree" position="inside">
+                <field name="x_studio_type_of_pallet" invisible="1" column_invisible="1"/>
+                <field name="package_level_id" invisible="1" column_invisible="1"/>
+                <field name="picking_type_id" invisible="1" column_invisible="1"/>
+            </xpath>
+    
+            <!-- Make the lot_id field invisible -->
+            <xpath expr="//tree//field[@name='lot_name']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//tree//field[@name='lot_id']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//tree//field[@name='product_id']" position="before">
+                <field optional="show" name="x_studio_use_as_template" column_invisible="picking_code == 'outgoing'"/>
+            </xpath>
+            <xpath expr="//tree//field[@name='location_dest_id'][1]" position="before">
+
+                <field name="x_studio_return_count" optional="show" readonly="True" 
+                       invisible="picking_type_id in [45, 46, 47, 48]" 
+                       column_invisible="context.get('picking_type_id') in [45, 46, 47, 48]"/>
+                <field optional="show" name="x_studio_pallet_series_id" 
+                       invisible="picking_type_id in [45, 46, 47, 48]" 
+                       column_invisible="context.get('picking_type_id') in [45, 46, 47, 48]"/>
+            </xpath>
+    
+            <!-- Replace the first 'result_package_id' field -->
+            <xpath expr="//tree//field[@name='result_package_id'][2]" position="replace">
+                <field name="result_package_id" column_invisible="picking_code == 'outgoing'"
+                       readonly="package_level_id and parent.picking_type_entire_packs"
+                       groups="stock.group_tracking_lot"
+                       context="{'picking_id': picking_id}"
+                       domain="[('x_studio_assigned_location', 'parent_of', context.get('default_location_dest_id')), 
+                               ('location_id', '=', False), 
+                               ('package_type_id.name', '=', x_studio_type_of_pallet), 
+                               ('x_studio_is_reserved', '=', False)]" />
+            </xpath>
+    
+            <!-- Insert new fields after the first 'result_package_id' -->
+            <xpath expr="//tree//field[@name='result_package_id'][2]" position="after">
+                <field optional="show" name="x_studio_production_date" string="Prod. Date"
+                       invisible="False" readonly="picking_code == 'outgoing'"
+                       options="{'max_date': 'today'}" />
+                <field optional="show" name="x_studio_expiration_date" string="Exp. Date"
+                       invisible="False" readonly="picking_code == 'outgoing'"
+                       options="{'min_date': 'today'}" />
+                <field optional="show" name="x_studio_2nd_uom" invisible="picking_type_id in [2]" 
+                       column_invisible="context.get('picking_code') == 'outgoing'" string="Packaging" 
+                       readonly="picking_code == 'outgoing'"/>
+                <field optional="show" name="x_studio_quantity_uom" string="Unit of Measure" 
+                       domain="[('category_id', 'ilike', 'Packaging UOM')]" 
+                       readonly="False" invisible="picking_type_id in [2]" 
+                       column_invisible="context.get('picking_code') == 'outgoing'" required="False"/>
+                <field optional="show" name="x_studio_total_units" invisible="picking_type_id in [2]" 
+                       column_invisible="context.get('picking_code') == 'outgoing'" string="Min UOM" 
+                       required="False" readonly="picking_code == 'outgoing'"/>
+                <field name="x_studio_min_quantity_uom" optional="show" 
+                       domain="[('category_id', 'ilike', 'min uom')]" 
+                       string="Unit of Measure" readonly="picking_code == 'outgoing'" 
+                       required="False"/>
+            <field optional="show" name="x_studio_affected_2nd_uom" invisible="picking_type_id in [0]" column_invisible="context.get('picking_code') == 'incoming'" string="Packaging (Withdraw)"/>
+            <field optional="show" name="x_studio_actual_packaging" column_invisible="context.get('picking_code') == 'incoming'"/>
+            <field name="x_studio_quantity_uom_delivery" optional="show" readonly="True" invisible="picking_type_id in [0]" column_invisible="context.get('picking_code') == 'incoming'" string="Unit of Measure"/>
+            <field optional="show" name="x_studio_withdraw_units" invisible="picking_type_id in [0]" column_invisible="context.get('picking_code')== 'incoming'" string="Min UOM (Withdraw) "/>
+            <field optional="show" name="x_studio_actual_min" column_invisible="context.get('picking_code') == 'incoming'"/>
+
+            </xpath>
+            <xpath expr="//tree//field[@name='quantity']" position="after">
+                <field optional="show" name="x_studio_actual_kg" column_invisible="context.get('picking_code') == 'incoming'"/>
+            </xpath>
+        </field>
+    </record>
+
+
+
+
+
+
 </odoo>

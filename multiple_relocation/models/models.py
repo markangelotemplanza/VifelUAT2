@@ -114,45 +114,59 @@ class stock_move_line_Override(models.Model):
             if line.result_package_id.location_id:
                 line.location_dest_id = line.result_package_id.location_id
 
+    @api.model
+    def call_server_action(self, action_type):
+        picking_id = self.env.context.get('default_picking_id')
+        if not picking_id:
+            raise UserError(_("No picking ID found in context."))
+
+        # Search for the stock.picking record using the provided picking_id
+        picking = self.env['stock.picking'].search([('id', '=', picking_id)], limit=1)
+        if not picking:
+            raise UserError(_("No stock.picking record found with ID %s.") % picking_id)
+
+        # Map action types to their respective server action IDs
+        action_ids = {
+            'auto_fill_pd_ed': 341,
+            'auto_fill_locations': 300,
+            'reserve_locations': 301,
+            'unreserve_locations': 302,
+            'reserve_pallets': 338,
+        }
+
+        # Get the action ID based on the action_type parameter
+        action_id = action_ids.get(action_type)
+        if action_id is None:
+            raise UserError(_("Invalid action type: %s") % action_type)
+
+        # Find the server action using the mapped ID
+        action = self.env['ir.actions.server'].browse(action_id)
+        if not action:
+            raise UserError(_("Server action with ID %s not found.") % action_id)
+
+        # Prepare context for executing the action
+        context = {
+            'active_model': 'stock.picking',
+            'active_ids': [picking.id],
+            'active_id': picking.id,
+        }
+
+        return action.with_context(context).run()
+
     def call_server_action_auto_fill_pd_ed(self):
-        picking_id = self.env.context.get('default_picking_id')
-        if picking_id:
-            # Search for the stock.picking record using the provided picking_id
-            picking = self.env['stock.picking'].search([('id', '=', picking_id)], limit=1)
-            if picking:
-                # Find the server action with the specified ID (341 in this case)
-                action = self.env['ir.actions.server'].browse(341)
-                if action:
-                    # Execute the action for the stock.picking record
-                    context = {'active_model': 'stock.picking', 'active_ids': [picking.id], 'active_id': picking.id}
+        return self.call_server_action('auto_fill_pd_ed')
 
-                    return action.with_context(context).run()
-                else:
-                    raise UserError("Server action with ID 341 not found.")
-            else:
-                raise UserError("No stock.picking record found with ID %s." % picking_id)
-        else:
-            raise UserError("No picking ID found in context.")
-            
     def call_server_action_auto_fill_locations(self):
-        picking_id = self.env.context.get('default_picking_id')
-        if picking_id:
-            # Search for the stock.picking record using the provided picking_id
-            picking = self.env['stock.picking'].search([('id', '=', picking_id)], limit=1)
-            if picking:
-                # Find the server action with the specified ID (341 in this case)
-                action = self.env['ir.actions.server'].browse(300)
-                if action:
-                    # Execute the action for the stock.picking record
-                    context = {'active_model': 'stock.picking', 'active_ids': [picking.id], 'active_id': picking.id}
+        return self.call_server_action('auto_fill_locations')
 
-                    return action.with_context(context).run()
-                else:
-                    raise UserError("Server action with ID 341 not found.")
-            else:
-                raise UserError("No stock.picking record found with ID %s." % picking_id)
-        else:
-            raise UserError("No picking ID found in context.")
+    def call_server_action_reserve_locations(self):
+        return self.call_server_action('reserve_locations')
+
+    def call_server_action_unreserve_locations(self):
+        return self.call_server_action('unreserve_locations')
+        
+    def call_server_action_reserve_pallets(self):
+        return self.call_server_action('reserve_pallets')
 
 
 
@@ -471,7 +485,11 @@ class transfer_locations(models.Model):
                 'default_company_id': self.company_id.id,
                 'show_lots_text': self.show_lots_text,
                 'picking_code': self.picking_type_code,
+                'picking_type_code': self.picking_type_code,
                 'picking_type_id': self.picking_type_id.id,
+                'x_studio_is_reserved': self.x_studio_is_reserved,
+                'x_studio_record_lines_counter': self.x_studio_record_lines_counter,
+                'state': self.state,
             }
         }
         
@@ -526,12 +544,13 @@ class transfer_locations(models.Model):
             
          
     
-    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh')
+    @api.depends('x_studio_is_a_blast_freezer', 'partner_id', 'x_studio_warehouse_sh', 'x_studio_preferred_locations')
     def _compute_allowed_value_ids(self):
         for record in self:
             if record.state == 'done' or not record.partner_id:
                 record.allowed_value_ids = []
                 continue
+    
             if record.picking_type_code == 'outgoing':
                 if record.x_studio_is_a_blast_freezer:
                     locations_with_partner_quants = self.env['stock.quant'].search([
@@ -549,21 +568,36 @@ class transfer_locations(models.Model):
                         ("warehouse_id.code", "=", record.x_studio_warehouse_sh)
                     ])
                     record.allowed_value_ids = allowed_locations
-
+    
             elif record.picking_type_code == 'incoming':
                 if record.x_studio_is_a_blast_freezer:
                     record.allowed_value_ids = self.env['stock.location'].search([('x_studio_is_a_blast_freezer', '=', True)])
                 else:
-                    record.allowed_value_ids = self.env['stock.location'].search([
+                    domain = [
                         '&',
                         ('child_ids.child_ids', '!=', False),
                         ('name', '!=', 'Stock'),
                         ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
                         ('location_id', '!=', False),
-                        ('name', 'not ilike', "BF")
-                    ])
+                        ('name', 'not ilike', "BF"),
+                    ]
+                    
+                    # If there are preferred locations, add the filter for preferred locations
+                    if record.x_studio_preferred_locations:
+                        domain += [
+                            '|',
+                            ('location_id', 'in', record.x_studio_preferred_locations.ids),
+                            '|',
+                            ('location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                            ('location_id.location_id.location_id', 'in', record.x_studio_preferred_locations.ids),
+                        ]
+                    
+                    # Perform the search with the updated domain
+                    record.allowed_value_ids = self.env['stock.location'].search(domain)
+    
             else:
                 record.allowed_value_ids = []
+
 
     def has_generated_an_ncr(self):
         self.x_studio_has_generated_an_ncr = True

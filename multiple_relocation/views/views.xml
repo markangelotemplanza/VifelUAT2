@@ -18,21 +18,40 @@
         <field name="model">stock.move.line</field>
         <field name="inherit_id" ref="stock.view_stock_move_line_detailed_operation_tree"/>
         <field name="arch" type="xml">
-            <!-- Target the header inside the tree view -->
-            <xpath expr="//tree/header" position="inside">
-                <!-- Add your new button here -->
-                <button class="btn-secondary" name="call_server_action_auto_fill_locations" type="object" 
-                        string="Auto-Fill Locations" />
-                <button class="btn-secondary" name="call_server_action_auto_fill_pd_ed" type="object" 
-                        string="Auto-Fill PD &amp; ED" />
-            </xpath>
-    
+
             <!-- Declare the missing fields as invisible -->
             <xpath expr="//tree" position="inside">
                 <field name="x_studio_type_of_pallet" invisible="1" column_invisible="1"/>
                 <field name="package_level_id" invisible="1" column_invisible="1"/>
                 <field name="picking_type_id" invisible="1" column_invisible="1"/>
+                <field name="picking_type_id" invisible="1" column_invisible="1"/>
             </xpath>
+            
+            <!-- Target the header inside the tree view -->
+            <xpath expr="//tree/header" position="inside">
+                <button  name="call_server_action_reserve_pallets" type="object" 
+                        string="Reserve Pallets" class="btn-success" 
+                        invisible="context.get('x_studio_is_reserved') == True or context.get('x_studio_record_lines_counter') == 0 or context.get('picking_type_code') != 'incoming' or context.get('state') == 'done' or not context.get('picking_type_id') in [45, 46]"/>
+                <button  name="call_server_action_reserve_pallets" type="object" 
+                        string="Unreserve Pallets" class="btn-danger" 
+                        invisible="not context.get('x_studio_is_reserved') or context.get('picking_type_code') != 'incoming' or context.get('state') != 'assigned' or not context.get('picking_type_id') in [45, 46]"/>
+                <button  name="call_server_action_reserve_locations" type="object" 
+                        string="Reserve Locations" class="btn-success" 
+                        invisible="context.get('x_studio_is_reserved') == True or context.get('x_studio_record_lines_counter') == 0 or context.get('picking_type_code') != 'incoming' or context.get('state') == 'done' or not context.get('picking_type_id') in [1, 6]"/>
+                <button  name="call_server_action_unreserve_locations" type="object" 
+                        string="Unreserve Locations" class="btn-danger" 
+                        invisible="not context.get('x_studio_is_reserved') or context.get('picking_type_code') != 'incoming' or context.get('state') != 'assigned' or not context.get('picking_type_id') in [45, 46]"/>
+                <button  name="call_server_action_auto_fill_locations" type="object" 
+                        string="Auto-Fill Locations" class="btn btn-info" 
+                        invisible="context.get('x_studio_record_lines_counter') == 0 or context.get('state') != 'assigned' or context.get('picking_type_code') != 'incoming' or not context.get('picking_type_id') in [1, 6, 45, 46]"/>
+                <button  name="call_server_action_auto_fill_pd_ed" type="object" 
+                        string="Auto-Fill PD &amp; ED" class="btn btn-info" 
+                        invisible="context.get('x_studio_record_lines_counter') == 0 or context.get('state') != 'assigned' or context.get('picking_type_code') != 'incoming' or not context.get('picking_type_id') in [1, 6, 45, 46]"/>
+            </xpath>
+
+
+    
+
     
             <!-- Make the lot_id field invisible -->
             <xpath expr="//tree//field[@name='lot_name']" position="attributes">
@@ -68,6 +87,8 @@
     
             <!-- Insert new fields after the first 'result_package_id' -->
             <xpath expr="//tree//field[@name='result_package_id'][2]" position="after">
+                <field optional="show" name="x_studio_container_number" required="False" readonly="picking_code == 'outgoing'" column_invisible="context.get('picking_type_id') in [45, 46, 47, 48]"/>
+
                 <field optional="show" name="x_studio_production_date" string="Prod. Date"
                        invisible="False" readonly="picking_code == 'outgoing'"
                        options="{'max_date': 'today'}" />

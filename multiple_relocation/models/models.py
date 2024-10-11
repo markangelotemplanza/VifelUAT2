@@ -8,6 +8,7 @@ import re
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.osv.expression import AND, OR
 from odoo.tools.float_utils import float_compare, float_is_zero, float_round
+from collections import defaultdict
 _logger = logging.getLogger(__name__)
 
 class multiple_relocation(models.TransientModel):

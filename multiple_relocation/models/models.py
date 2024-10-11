@@ -196,7 +196,7 @@ class ensure_ownership(models.Model):
         
         quants = quant_ids._get_reserve_quantity(
             self.product_id, location_id, need, product_packaging_id=self.product_packaging_id,
-            uom_id=self.product_uom, lot_id=lot_id, package_id=package_id, owner_id=self.partner_id, strict=strict)
+            uom_id=self.product_uom, lot_id=lot_id, package_id=package_id, owner_id=self.partner_id, x_studio_container_number=self.x_studio_container_number, strict=strict)
 
         # _logger.info(self)
         taken_quantity = 0
@@ -255,53 +255,13 @@ class override_stock_quant(models.Model):
                     first_init_loc = quant.x_studio_dest_relocation
                     if first_init_loc != self.x_studio_dest_relocation and first_init_loc:
                         raise UserError("You cannot move the same Pallet into multiple Locations.")
-    
-            # Note: No need for additional loops or checks since all conditions are handled within the single loop
-                    
-
 
     
-    # def _gather(self, product_id, location_id, lot_id=None, package_id=None, owner_id=None, strict=False, qty=0):
-    #     """ if records in self, the records are filtered based on the wanted characteristics passed to this function
-    #         if not, a search is done with all the characteristics passed.
-    #     """
-    #     removal_strategy = self._get_removal_strategy(product_id, location_id)
-    #     domain = self._get_gather_domain(product_id, location_id, lot_id, package_id, owner_id, strict)
-    #     domain, order = self._get_removal_strategy_domain_order(domain, removal_strategy, qty)
-        
-    #     if self.ids:
-    #         sort_key = self._get_removal_strategy_sort_key(removal_strategy)
-    #         res = self.filtered_domain(domain).sorted(key=sort_key[0], reverse=sort_key[1])
-    #     else:
-    #         res = self.search(domain, order=order)
-    #     # List to store all matching stock.quant records
-    #     #TODO: Try adding also closest to expiration
-    #     if removal_strategy == "closest":
-    #         res = res.sorted(lambda q: (q.location_id.complete_name, -q.id))
-            
-    #     temp_var = self.env['stock.quant'].browse()
-    #     # raise UserError(len(self.env.user.groups_id))
-    #     for x in res:
-    #         # Search for stock.quant records matching x.id
-    #         quants = self.env['stock.quant'].search([('id', '=', x.id)])
-    #         # _logger.info(dir(quants))
-            
-    #         # if not quants.x_studio_special_holding and quants.x_studio_reference:
-    #         if not quants.x_studio_special_holding:
-    #         # if not quants.x_studio_special_holding:
-    #             # _logger.info(quants.x_studio_reference)
-    #             temp_var += quants
-            
-    #     return temp_var
-
-    def _gather(self, product_id, location_id, lot_id=None, package_id=None, owner_id=None, strict=False, qty=0):
-        """ if records in self, the records are filtered based on the wanted characteristics passed to this function
-            if not, a search is done with all the characteristics passed.
-        """
+    def _gather(self, product_id, location_id, lot_id=None, package_id=None, owner_id=None, strict=False, qty=0, x_studio_container_number=None):
         removal_strategy = self._get_removal_strategy(product_id, location_id)
         domain = self._get_gather_domain(product_id, location_id, lot_id, package_id, owner_id, strict)
         domain, order = self._get_removal_strategy_domain_order(domain, removal_strategy, qty)
-
+    
         quants_cache = self.env.context.get('quants_cache')
         if quants_cache is not None and strict and removal_strategy != 'least_packages':
             res = self.env['stock.quant']
@@ -310,11 +270,107 @@ class override_stock_quant(models.Model):
             res |= quants_cache[product_id.id, location_id.id, False, package_id.id, owner_id.id]
         else:
             res = self.search(domain, order=order)
-        if removal_strategy == "closest":
-            res = res.sorted(lambda q: (q.location_id.complete_name, -q.id))
+    
+        # Sort by container number first, then expiration date
+        if x_studio_container_number:
+            res = res.sorted(key=lambda q: (
+                q.x_studio_container_number != x_studio_container_number,  # First: match container number (True comes after False)
+                q.x_studio_expiration_date,  # Second: sort by expiration date (earliest first)
+                q.id  # Tie-breaker: use the quant ID in reverse order
+            ))
+        else:
+            res = res.sorted(key=lambda q: (
+                q.x_studio_expiration_date,  # Second: sort by expiration date (earliest first)
+                q.id  # Tie-breaker: use the quant ID in reverse order
+            ))  
 
-        
         return res.sorted(key=lambda q: (q.x_studio_special_holding, not q.lot_id))
+        
+
+    def _get_reserve_quantity(self, product_id, location_id, quantity, product_packaging_id=None, uom_id=None, lot_id=None, package_id=None, owner_id=None, x_studio_container_number=None, strict=False ):
+        """ Get the quantity available to reserve for the set of quants
+        sharing the combination of `product_id, location_id` if `strict` is set to False or sharing
+        the *exact same characteristics* otherwise. If no quants are in self, `_gather` will do a search to fetch the quants
+        Typically, this method is called before the `stock.move.line` creation to know the reserved_qty that could be use.
+        It's also called by `_update_reserve_quantity` to find the quant to reserve.
+
+        :return: a list of tuples (quant, quantity_reserved) showing on which quant the reservation
+            could be done and how much the system is able to reserve on it
+        """
+
+        self = self.sudo()
+        rounding = product_id.uom_id.rounding
+        
+        quants = self._gather(product_id, location_id, lot_id=lot_id, package_id=package_id, owner_id=owner_id, strict=strict, qty=quantity, x_studio_container_number=x_studio_container_number)
+
+        # avoid quants with negative qty to not lower available_qty
+        available_quantity = quants._get_available_quantity(product_id, location_id, lot_id, package_id, owner_id, strict)
+
+        # do full packaging reservation when it's needed
+        if product_packaging_id and product_id.product_tmpl_id.categ_id.packaging_reserve_method == "full":
+            available_quantity = product_packaging_id._check_qty(available_quantity, product_id.uom_id, "DOWN")
+
+        quantity = min(quantity, available_quantity)
+
+        # `quantity` is in the quants unit of measure. There's a possibility that the move's
+        # unit of measure won't be respected if we blindly reserve this quantity, a common usecase
+        # is if the move's unit of measure's rounding does not allow fractional reservation. We chose
+        # to convert `quantity` to the move's unit of measure with a down rounding method and
+        # then get it back in the quants unit of measure with an half-up rounding_method. This
+        # way, we'll never reserve more than allowed. We do not apply this logic if
+        # `available_quantity` is brought by a chained move line. In this case, `_prepare_move_line_vals`
+        # will take care of changing the UOM to the UOM of the product.
+        if not strict and uom_id and product_id.uom_id != uom_id:
+            quantity_move_uom = product_id.uom_id._compute_quantity(quantity, uom_id, rounding_method='DOWN')
+            quantity = uom_id._compute_quantity(quantity_move_uom, product_id.uom_id, rounding_method='HALF-UP')
+
+        if quants.product_id.tracking == 'serial':
+            if float_compare(quantity, int(quantity), precision_rounding=rounding) != 0:
+                quantity = 0
+
+        reserved_quants = []
+
+        if float_compare(quantity, 0, precision_rounding=rounding) > 0:
+            # if we want to reserve
+            available_quantity = sum(quants.filtered(lambda q: float_compare(q.quantity, 0, precision_rounding=rounding) > 0).mapped('quantity')) - sum(quants.mapped('reserved_quantity'))
+        elif float_compare(quantity, 0, precision_rounding=rounding) < 0:
+            # if we want to unreserve
+            available_quantity = sum(quants.mapped('reserved_quantity'))
+            if float_compare(abs(quantity), available_quantity, precision_rounding=rounding) > 0:
+                raise UserError(_('It is not possible to unreserve more products of %s than you have in stock.', product_id.display_name))
+        else:
+            return reserved_quants
+
+        negative_reserved_quantity = defaultdict(float)
+        for quant in quants:
+            if float_compare(quant.quantity - quant.reserved_quantity, 0, precision_rounding=rounding) < 0:
+                negative_reserved_quantity[(quant.location_id, quant.lot_id, quant.package_id, quant.owner_id)] += quant.quantity - quant.reserved_quantity
+        for quant in quants:
+            if float_compare(quantity, 0, precision_rounding=rounding) > 0:
+                max_quantity_on_quant = quant.quantity - quant.reserved_quantity
+                if float_compare(max_quantity_on_quant, 0, precision_rounding=rounding) <= 0:
+                    continue
+                negative_quantity = negative_reserved_quantity[(quant.location_id, quant.lot_id, quant.package_id, quant.owner_id)]
+                if negative_quantity:
+                    negative_qty_to_remove = min(abs(negative_quantity), max_quantity_on_quant)
+                    negative_reserved_quantity[(quant.location_id, quant.lot_id, quant.package_id, quant.owner_id)] += negative_qty_to_remove
+                    max_quantity_on_quant -= negative_qty_to_remove
+                if float_compare(max_quantity_on_quant, 0, precision_rounding=rounding) <= 0:
+                    continue
+                max_quantity_on_quant = min(max_quantity_on_quant, quantity)
+                reserved_quants.append((quant, max_quantity_on_quant))
+                quantity -= max_quantity_on_quant
+                available_quantity -= max_quantity_on_quant
+            else:
+                max_quantity_on_quant = min(quant.reserved_quantity, abs(quantity))
+                reserved_quants.append((quant, -max_quantity_on_quant))
+                quantity += max_quantity_on_quant
+                available_quantity += max_quantity_on_quant
+
+            if float_is_zero(quantity, precision_rounding=rounding) or float_is_zero(available_quantity, precision_rounding=rounding):
+                break
+        return reserved_quants
+
 
     
     # Add Total to available_quantity and inventory_quantity_auto_apply columns on Group By

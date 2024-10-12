@@ -11,7 +11,7 @@ from odoo.osv.expression import AND, OR
 from odoo.tools.float_utils import float_compare, float_is_zero, float_round
 from collections import defaultdict
 _logger = logging.getLogger(__name__)
-
+#comment
 class multiple_relocation(models.TransientModel):
     _inherit = 'stock.quant.relocate'
     

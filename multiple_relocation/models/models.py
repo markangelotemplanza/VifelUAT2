@@ -2,8 +2,9 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
+from odoo.osv import expression
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import re
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.osv.expression import AND, OR
@@ -257,7 +258,7 @@ class override_stock_quant(models.Model):
                     if first_init_loc != self.x_studio_dest_relocation and first_init_loc:
                         raise UserError("You cannot move the same Pallet into multiple Locations.")
 
-    
+
     def _gather(self, product_id, location_id, lot_id=None, package_id=None, owner_id=None, strict=False, qty=0, x_studio_container_number=None):
         removal_strategy = self._get_removal_strategy(product_id, location_id)
         domain = self._get_gather_domain(product_id, location_id, lot_id, package_id, owner_id, strict)
@@ -272,20 +273,27 @@ class override_stock_quant(models.Model):
         else:
             res = self.search(domain, order=order)
     
-        # Sort by container number first, then expiration date
+        # Handle multiple container numbers
+        container_priority = {}
         if x_studio_container_number:
+            container_numbers = [cn.strip() for cn in x_studio_container_number.split(',')]
+            for idx, container in enumerate(container_numbers):
+                container_priority[container] = idx
+    
             res = res.sorted(key=lambda q: (
-                q.x_studio_container_number != x_studio_container_number,  # First: match container number (True comes after False)
-                q.x_studio_expiration_date,  # Second: sort by expiration date (earliest first)
+                container_priority.get(q.x_studio_container_number, float('inf')),  # First: prioritize based on container order
+                q.x_studio_expiration_date if q.x_studio_expiration_date else date.max,  # Second: sort by expiration date (earliest first)
                 q.id  # Tie-breaker: use the quant ID in reverse order
             ))
         else:
             res = res.sorted(key=lambda q: (
-                q.x_studio_expiration_date,  # Second: sort by expiration date (earliest first)
+                q.x_studio_expiration_date if q.x_studio_expiration_date else date.max,  # Sort by expiration date (earliest first)
                 q.id  # Tie-breaker: use the quant ID in reverse order
-            ))  
-
+            ))
+    
         return res.sorted(key=lambda q: (q.x_studio_special_holding, not q.lot_id))
+
+
         
 
     def _get_reserve_quantity(self, product_id, location_id, quantity, product_packaging_id=None, uom_id=None, lot_id=None, package_id=None, owner_id=None, x_studio_container_number=None, strict=False ):

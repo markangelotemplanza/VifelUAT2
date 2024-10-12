@@ -46,10 +46,13 @@
                                 <field name="production_date"/>
                                 <field name="expiration_date"/>
                                 <field name="pack_uom_unit"/>
+                                <field name="actual_pack_uom_unit" column_invisible="True"/>
                                 <field name="pack_uom"/>
                                 <field name="min_uom_unit"/>
+                                <field name="actual_min_uom_unit" column_invisible="True"/>
                                 <field name="min_uom"/>
                                 <field name="quantity"/>
+                                <field name="actual_quantity" column_invisible="True"/>
                             </tree>
                         </field>
                     </page>

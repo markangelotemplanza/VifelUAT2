@@ -24,9 +24,9 @@ class ReturnPackageWizardLine(models.TransientModel):
     location_dest_id = fields.Many2one('stock.location', string="Destination Location")
     pack_uom = fields.Many2one('uom.uom', string='Unit of Measure')
     min_uom = fields.Many2one('uom.uom', string='Unit of Measure')
-    actual_quantity = fields.Float(string="Actual Quantity", readonly=True)
-    actual_pack_uom_unit = fields.Float(string="Packaging Unit", readonly=True)
-    actual_min_uom_unit = fields.Float(string="Min Unit", readonly=True)
+    actual_quantity = fields.Float(string="Actual Quantity")
+    actual_pack_uom_unit = fields.Float(string="Packaging Unit")
+    actual_min_uom_unit = fields.Float(string="Min Unit")
     
 class ReturnPackageWizard(models.TransientModel):
     _name = 'return.package.wizard'
@@ -75,14 +75,37 @@ class ReturnPackageWizard(models.TransientModel):
 
     def action_process_return(self):
         selected_packages = self.package_line_ids.filtered(lambda line: line.select_package)
-        if not self.package_line_ids:
+
+        if not selected_packages:
             raise UserError("Please select at least 1 Move Line.")
             
+        # Guard clause to check synchronization of UoMs in selected packages
+        for record in selected_packages:
+            if (record.pack_uom_unit < record.actual_pack_uom_unit or
+                record.min_uom_unit < record.actual_min_uom_unit or
+                record.quantity < record.actual_quantity):
+    
+                errors = []
+    
+                # Check which UoMs are not synchronized
+                if record.pack_uom_unit == record.actual_pack_uom_unit:
+                    errors.append("Packaging Unit")
+                if record.min_uom_unit == record.actual_min_uom_unit:
+                    errors.append("Minimum Unit")
+                if record.quantity == record.actual_quantity:
+                    errors.append("Quantity")
+    
+                # If some values didn't change, raise an error
+                if errors:
+                    raise UserError(f"The following fields must also be reduced to maintain synchronization: {', '.join(errors)}.")
+            raise UserError(record.actual_pack_uom_unit)
+
+    
         if not self.picking_type_id:
             # Default to the picking type for Receipts if not specified
             warehouse_id = self.picking_id.picking_type_id.warehouse_id.id
             self.picking_type_id = self.env['stock.picking.type'].search([('name', '=', "Receipts"), ('warehouse_id', '=', warehouse_id)], limit=1)
-        
+    
         # Copy the picking record
         new_picking = self.picking_id.copy(default={
             'picking_type_id': self.picking_type_id.id,
@@ -99,7 +122,7 @@ class ReturnPackageWizard(models.TransientModel):
             demand_min = package.min_uom_unit
             pack_uom = package.pack_uom.id,
             min_uom = package.min_uom.id
-            
+    
             if product_id not in product_data:
                 product_data[product_id] = {
                     'quantity': 0,
@@ -107,7 +130,7 @@ class ReturnPackageWizard(models.TransientModel):
                     'demand_packaging': 0,
                     'demand_min': 0,
                 }
-            
+    
             # Update the accumulated data
             product_data[product_id]['quantity'] += quantity
             product_data[product_id]['counter'] += 1
@@ -115,7 +138,7 @@ class ReturnPackageWizard(models.TransientModel):
             product_data[product_id]['demand_min'] += demand_min
             product_data[product_id]['min_uom'] = min_uom
             product_data[product_id]['pack_uom'] = pack_uom
-            
+    
         # Remove any existing move lines from the copied picking
         for move_line in new_picking.move_ids_without_package:
             move_line.unlink()
@@ -145,7 +168,7 @@ class ReturnPackageWizard(models.TransientModel):
         # Create stock.move.line records for each selected package
         move_line_values = []
         move_line_ids = []
-        
+    
         for package in selected_packages:
             move = move_line_mapping.get(package.product_id.id)
             if move:
@@ -157,25 +180,24 @@ class ReturnPackageWizard(models.TransientModel):
                     'location_dest_id': package.location_dest_id.id,
                 })
                 move_line_ids.append(move.id)
-        
+    
         # Create stock.move.line records
         if move_line_values:
             created_move_lines = self.env['stock.move.line'].create(move_line_values)
-            
+    
             # Update the additional fields after creation
             for package, move_line in zip(selected_packages, created_move_lines):
                 move_line.write({
                     'picking_id': new_picking.id,
                     'x_studio_expiration_date': package.expiration_date,
                     'x_studio_production_date': package.production_date,
-                    'x_studio_return_count': package.return_counter+1,
+                    'x_studio_return_count': package.return_counter + 1,
                     'x_studio_pallet_series_id': package.pallet_series_id,
                     'x_studio_container_number': package.container_number,
                     'x_studio_2nd_uom': package.pack_uom_unit,
                     'x_studio_total_units': package.min_uom_unit,
                     'x_studio_min_quantity_uom': package.min_uom,
                     'x_studio_quantity_uom': package.pack_uom,
-                    
                 })
     
         return {

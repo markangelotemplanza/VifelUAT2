@@ -8,7 +8,7 @@
         <field name="target">new</field>
     </record>
 
-    <!-- Inheritance of stock picking form to add 'Return Packages' button -->
+    <!-- Inheritance of stock picking form to add 'Return Packages' buttons -->
     <record id="stock_picking_form_inherit" model="ir.ui.view">
         <field name="name">stock.picking.form.inherit.return.package</field>
         <field name="model">stock.picking</field>

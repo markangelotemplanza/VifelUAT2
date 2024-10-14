@@ -98,7 +98,7 @@ class ReturnPackageWizard(models.TransientModel):
                 # If some values didn't change, raise an error
                 if errors:
                     raise UserError(f"The following fields must also be reduced to maintain synchronization: {', '.join(errors)}.")
-            raise UserError(record.actual_pack_uom_unit)
+            # raise UserError(record.actual_pack_uom_unit)
 
     
         if not self.picking_type_id:

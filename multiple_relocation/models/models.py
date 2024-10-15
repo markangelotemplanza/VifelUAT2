@@ -555,6 +555,7 @@ class transfer_locations(models.Model):
                 'x_studio_is_reserved': self.x_studio_is_reserved,
                 'x_studio_record_lines_counter': self.x_studio_record_lines_counter,
                 'state': self.state,
+                # 'parent_location': self.location_dest_id,
             }
         }
         

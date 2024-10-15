@@ -8,6 +8,7 @@
                 <!-- Ensure this field is included in the view -->
                 <field name="x_studio_warehouse_sh" invisible =  "1"/>
                 <field name="allowed_value_ids" invisible =  "1"/>
+                <field name="allowed_product_ids" invisible="1"/>
             </xpath>
         </field>
     </record>

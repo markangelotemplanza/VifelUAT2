@@ -499,12 +499,46 @@ class transfer_locations(models.Model):
         check_company=True, required=True, domain="[('id', 'in', allowed_value_ids)]")
 
 
-    
+    allowed_product_ids = fields.Many2many('product.product', compute="_compute_allowed_product_ids", string="Allowed Products", store=True)
     allowed_value_ids = fields.Many2many(
         'stock.location', compute="_compute_allowed_value_ids", string="Allowed Locations", store=True
     )
 
     gentle_reminder = fields.Char(string="Reminder")
+
+    @api.depends('location_id', 'location_dest_id')
+    def _compute_allowed_product_ids(self):
+        for record in self:
+            # Reset allowed product IDs
+            record.allowed_product_ids = False
+
+            if record.state == 'done' or not record.partner_id:
+                continue
+
+            
+            if record.picking_type_code == 'outgoing':
+                # Find all quants in the current location and its child locations
+                child_locations = self.env['stock.location'].search([('id', 'child_of', record.location_id.id)])
+                
+                # Search quants where owner_id matches the picking's owner_id
+                quants = self.env['stock.quant'].search([
+                    ('location_id', 'in', child_locations.ids),
+                    ('owner_id', '=', record.owner_id.id),  # Filter by owner_id
+                    ('available_quantity', '!=', 0)
+                ])
+                
+                # Map the quants to product_ids
+                allowed_product_ids = quants.mapped('product_id')
+                
+                # Set the allowed product ids in Many2many format
+                record.allowed_product_ids = [(6, 0, allowed_product_ids.ids)]
+                
+                # If you want to inspect the allowed products, uncomment the following line
+                # raise UserError("Allowed Products: {}".format(allowed_product_ids))
+            else:
+                record.allowed_product_ids = self.env['product.product'].search([])
+            
+    
         
     def action_return_packages(self):
         return {

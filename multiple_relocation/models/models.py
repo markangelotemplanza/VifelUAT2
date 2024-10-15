@@ -628,6 +628,10 @@ class transfer_locations(models.Model):
                     allowed_locations = self.env["stock.location"].search([
                         "&", 
                         "|", 
+                        "|", 
+                        "|", 
+                        ("child_ids.child_ids.child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
+                        ("child_ids.child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
                         ("child_ids.child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
                         ("child_ids.child_ids.x_studio_occupied_by", "=", record.partner_id.id),
                         ("warehouse_id.code", "=", record.x_studio_warehouse_sh)
@@ -643,8 +647,9 @@ class transfer_locations(models.Model):
                         ('child_ids.child_ids', '!=', False),
                         ('name', '!=', 'Stock'),
                         ('warehouse_id.code', '=', record.x_studio_warehouse_sh),
-                        ('location_id', '!=', False),
+                        ('location_id.location_id', '!=', False),
                         ('name', 'not ilike', "BF"),
+
                     ]
                     
                     # If there are preferred locations, add the filter for preferred locations

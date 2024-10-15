@@ -42,7 +42,7 @@
                         invisible="context.get('x_studio_is_reserved') == True or context.get('x_studio_record_lines_counter') == 0 or context.get('picking_type_code') != 'incoming' or context.get('state') == 'done' or not context.get('picking_type_id') in [1, 6]"/>
                 <button  name="call_server_action_unreserve_locations" type="object" 
                         string="Unreserve Locations" class="btn-danger" 
-                        invisible="not context.get('x_studio_is_reserved') or context.get('picking_type_code') != 'incoming' or context.get('state') != 'assigned' or not context.get('picking_type_id') in [45, 46]"/>
+                        invisible="not context.get('x_studio_is_reserved') or context.get('picking_type_code') != 'incoming' or context.get('state') != 'assigned' or  context.get('picking_type_id') in [45, 46]"/>
                 <button  name="call_server_action_auto_fill_locations" type="object" 
                         string="Auto-Fill Locations" class="btn btn-info" 
                         invisible="context.get('x_studio_record_lines_counter') == 0 or context.get('state') != 'assigned' or context.get('picking_type_code') != 'incoming' or not context.get('picking_type_id') in [1, 6, 45, 46]"/>

@@ -25,6 +25,7 @@
                 <field name="package_level_id" invisible="1" column_invisible="1"/>
                 <field name="picking_type_id" invisible="1" column_invisible="1"/>
                 <field name="picking_type_id" invisible="1" column_invisible="1"/>
+
             </xpath>
             
             <!-- Target the header inside the tree view -->
@@ -53,7 +54,7 @@
     
 
     
-            <!-- Make the lot_id field invisible -->
+            <!-- Attribute Override -->
             <xpath expr="//tree//field[@name='lot_name']" position="attributes">
                 <attribute name="column_invisible">True</attribute>
             </xpath>
@@ -63,6 +64,14 @@
             <xpath expr="//tree//field[@name='product_id']" position="before">
                 <field optional="show" name="x_studio_use_as_template" column_invisible="picking_code == 'outgoing'"/>
             </xpath>
+
+            <xpath expr="//tree//field[@name='location_dest_id'][2]" position="attributes">
+                <attribute name="domain">['&amp;', '|', ('x_studio_occupied_by', '=', ''), ('x_studio_occupied_by', '=', False), ('child_ids', '=', False), ('id', 'child_of', context.get('default_location_dest_id')), ('x_studio_is_reserved', '=', False)]
+</attribute>
+            </xpath>
+
+
+            
             <xpath expr="//tree//field[@name='location_dest_id'][1]" position="before">
 
                 <field name="x_studio_return_count" optional="show" readonly="True" 

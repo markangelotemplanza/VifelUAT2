@@ -175,7 +175,7 @@ class ReturnPackageWizard(models.TransientModel):
                 move_line_values.append({
                     'move_id': move.id,
                     'product_id': package.product_id.id,
-                    'quantity': package.quantity, 
+                    'quantity': package.quantity,  # This might need to be 'product_uom_qty' or 'quantity_done' depending on your version
                     'result_package_id': package.result_package_id.id,
                     'location_dest_id': package.location_dest_id.id,
                 })

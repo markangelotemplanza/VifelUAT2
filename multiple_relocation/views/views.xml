@@ -25,7 +25,7 @@
                 <field name="x_studio_type_of_pallet" invisible="1" column_invisible="1"/>
                 <field name="package_level_id" invisible="1" column_invisible="1"/>
                 <field name="picking_type_id" invisible="1" column_invisible="1"/>
-                <field name="hasDuplicate" invisible="1" column_invisible="1"/>
+                <!-- <field name="hasDuplicate" invisible="1" column_invisible="1"/> -->
 
             </xpath>
             
@@ -84,9 +84,10 @@
             </xpath>
     
             <!-- Replace the first 'result_package_id' field -->
+            <!--decoration-success="hasDuplicate"  -->
             <xpath expr="//tree//field[@name='result_package_id'][2]" position="replace">
                 <field name="result_package_id" column_invisible="picking_code == 'outgoing'"
-                       decoration-success="hasDuplicate"
+                       
                        readonly="package_level_id and parent.picking_type_entire_packs"
                        groups="stock.group_tracking_lot"
                        context="{'picking_id': picking_id}"  

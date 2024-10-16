@@ -70,40 +70,40 @@ class stock_move_line_Override(models.Model):
     #     ondelete='restrict', required=False, check_company=True,
     #     domain="['|', '|', '&', ('location_id', '=', False), ('location_id', '=', location_dest_id), ('id', '=', package_id), '|', ('owner_id', '=', owner_id), ('owner_id', '=', False)]",
     #     help="If set, the operations are packed into this package")
-    hasDuplicate = fields.Boolean(default=False)
+    # hasDuplicate = fields.Boolean(default=False)
 
         
 
-    @api.onchange('result_package_id')
-    def checkDuplicatePallet(self):
-        for record in self:
-            # Reset hasDuplicate to False before checking
-            record.hasDuplicate = False
-            # raise UserError(record.result_package_id.name)
-            # Ensure result_package_id is set and is a valid integer
-            if record.result_package_id:
-                move_line_ids = self.env['stock.move.line'].search([
-                    ('picking_id', '=', record.picking_id.id),
-                    ('result_package_id', '=', record.result_package_id.id),
-                ])
+    # @api.onchange('result_package_id')
+    # def checkDuplicatePallet(self):
+    #     raise UserError("Test")
+    #     for record in self:
+    #         # Reset hasDuplicate to False before checking
+    #         record.hasDuplicate = False
+    #         # raise UserError(record.result_package_id.name)
+    #         # Ensure result_package_id is set and is a valid integer
+    #         if record.result_package_id:
+    #             move_line_ids = self.env['stock.move.line'].search([
+    #                 ('picking_id', '=', record.picking_id.id),
+    #                 ('result_package_id', '=', record.result_package_id.id),
+    #             ])
 
-                # If duplicates found, set hasDuplicate to True
-                if move_line_ids:
-                    for lines in move_line_ids:
-                        lines.write({'hasDuplicate': True})
-                    record.hasDuplicate = True
-                else:
-                    record.hasDuplicate = False
-            else:
-                move_line_ids = self.env['stock.move.line'].search([('picking_id', '=', record.picking_id.id), ('result_package_id', '!=', False)])
-                # pallets = move_line_ids.mapped('result_package_id').name
+    #             # If duplicates found, set hasDuplicate to True
+    #             if move_line_ids:
+    #                 for lines in move_line_ids:
+    #                     lines.write({'hasDuplicate': True})
+    #                 record.hasDuplicate = True
+    #             else:
+    #                 record.hasDuplicate = False
+    #             # raise UserError("Test")
+    #         else:
+    #             move_line_ids = self.env['stock.move.line'].search([('picking_id', '=', record.picking_id.id), ('result_package_id', '!=', False)])
+    #             # pallets = move_line_ids.mapped('result_package_id').name
                
-                if len(move_line_ids) < 3:
-                    for lines in move_line_ids:
-                        lines.write({'hasDuplicate': False})
-
-                                                                   
-                                                                   
+    #             if len(move_line_ids) < 3:
+    #                 for lines in move_line_ids:
+    #                     lines.write({'hasDuplicate': False})
+                                                        
             
   
     

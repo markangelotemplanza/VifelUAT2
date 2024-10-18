@@ -639,7 +639,7 @@ class transfer_locations(models.Model):
     
             # Check if the package (pallet) is already in our tracker
             for data in locs_and_pallets_expiration:
-                if data['package_id'] == line.result_package_id.id and data['product_id'] != line.product_id.id:
+                if line.result_package_id.id and data['package_id'] == line.result_package_id.id and data['product_id'] != line.product_id.id:
                     # Store the conflicting products in a dictionary with pallet id as key
                     if line.result_package_id.name not in conflicting_pallets:
                         conflicting_pallets[line.result_package_id.name] = [data['display_name']]
@@ -665,6 +665,7 @@ class transfer_locations(models.Model):
             for pallet, products in conflicting_pallets.items():
                 product_list = ", ".join(products)
                 conflict_messages.append(f"• Pallet: '{pallet}' contains multiple products: {product_list}")
+
             
             # Use \n to create line breaks
             self.gentle_reminder = "Reminder:\n" + "\n".join(conflict_messages) + "\n\nAre you sure you want to insert each line of multiple products into a single pallet?"

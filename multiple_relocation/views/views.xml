@@ -37,6 +37,11 @@
                 <button  name="call_server_action_reserve_pallets" type="object" 
                         string="Unreserve Pallets" class="btn-danger" 
                         invisible="not context.get('x_studio_is_reserved') or context.get('picking_type_code') != 'incoming' or context.get('state') != 'assigned' or not context.get('picking_type_id') in [45, 46]"/>
+
+                <button  name="call_server_action_assign_pallet_series" type="object" 
+                        string="Assign Pallet Series" class="btn-warning" 
+                        invisible="context.get('x_studio_is_reserved') == False or context.get('x_studio_record_lines_counter') == 0 or context.get('picking_type_code') != 'incoming' or context.get('state') == 'done' or not context.get('picking_type_id') in [1, 6]"/>
+
                 <button  name="call_server_action_reserve_locations" type="object" 
                         string="Reserve Locations" class="btn-success" 
                         invisible="context.get('x_studio_is_reserved') == True or context.get('x_studio_record_lines_counter') == 0 or context.get('picking_type_code') != 'incoming' or context.get('state') == 'done' or not context.get('picking_type_id') in [1, 6]"/>
@@ -81,6 +86,9 @@
                 <field optional="show" name="x_studio_pallet_series_id" 
                        invisible="picking_type_id in [45, 46, 47, 48]" 
                        column_invisible="context.get('picking_type_id') in [45, 46, 47, 48]"/>
+                <field optional="show" name="x_studio_is_reserved" 
+                       invisible="picking_type_id in [45, 46, 47, 48]" 
+                       column_invisible="context.get('picking_type_id') in [45, 46, 47, 48, 2, 7]"/>                
             </xpath>
     
             <!-- Replace the first 'result_package_id' field -->

@@ -168,6 +168,7 @@ class stock_move_line_Override(models.Model):
             'reserve_locations': 301,
             'unreserve_locations': 302,
             'reserve_pallets': 338,
+            'assign_pallet_series': 347,
         }
 
         # Get the action ID based on the action_type parameter
@@ -203,7 +204,8 @@ class stock_move_line_Override(models.Model):
         
     def call_server_action_reserve_pallets(self):
         return self.call_server_action('reserve_pallets')
-
+    def call_server_action_assign_pallet_series(self):
+        return self.call_server_action('assign_pallet_series')
 
 
 class ensure_ownership(models.Model):

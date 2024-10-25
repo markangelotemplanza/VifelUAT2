@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-<record id="pallet_kilos_inventory" model="ir.actions.report">
-            <field name="name">Pallet Kilos XLSX Report</field>
-            <field name="model">pallet_kilos_record_model.pallet_kilos_record_model</field>
-            <field name="report_type">xlsx</field>
-            <field name="report_name">pallet_kilos_record_model.pallet_kilos_report_xlsx</field>
-            <field name="report_file">pallet_kilos_record_model.pallet_kilos_report_xlsx</field>
-            <field name="print_report_name">'XLSX Test'</field>
-  
- </record>
+    
+    <record id="pallet_kilos_inventory" model="ir.actions.report">
+                <field name="name">Pallet Kilos XLSX Report</field>
+                <field name="model">pallet_kilos_record_model.pallet_kilos_record_model</field>
+                <field name="report_type">xlsx</field>
+                <field name="report_name">pallet_kilos_record_model.pallet_kilos_report_xlsx</field>
+                <field name="report_file">pallet_kilos_record_model.pallet_kilos_report_xlsx</field>
+                <field name="print_report_name">'XLSX Test'</field>
+      
+     </record>
 
     
     <record id="xlsx_daily_inventory" model="ir.actions.report">
